@@ -25,6 +25,26 @@ EXPECTED_SHA256 = "98fc1875bcd2558e52b5343e5da334aec666d3bc483e731df3db6c365c511
 OUTPUT_PATH = "/output/entry.txt"
 
 
+def verify(path, data) -> bool:
+    """Read the written file back and confirm it is byte-identical."""
+    try:
+        with open(path, "rb") as f:
+            written = f.read()
+    except OSError as exc:
+        print(f"FAIL: could not read back {path}: {exc}", file=sys.stderr)
+        return False
+    if written != data:
+        print("FAIL: read-back bytes differ from the pinned line", file=sys.stderr)
+        return False
+    if len(written) != EXPECTED_BYTES:
+        print(f"FAIL: read-back is {len(written)} bytes, expected {EXPECTED_BYTES}", file=sys.stderr)
+        return False
+    if hashlib.sha256(written).hexdigest() != EXPECTED_SHA256:
+        print("FAIL: read-back sha256 does not match the pinned hash", file=sys.stderr)
+        return False
+    return True
+
+
 def main() -> int:
     text = LINE
     data = text.encode("utf-8")
@@ -51,6 +71,10 @@ def main() -> int:
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "wb") as f:
         f.write(data)
+
+    verified = verify(OUTPUT_PATH, data)
+    if not verified:
+        return 1
 
     print(f"WROTE {OUTPUT_PATH}: {len(text)} chars, {len(data)} bytes, sha256 {EXPECTED_SHA256[:12]}...")
     return 0
